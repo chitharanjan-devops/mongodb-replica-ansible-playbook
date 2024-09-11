@@ -3,3 +3,5 @@ sudo apt update
 sudo apt install ansible
 # add inventory file
 # establish a passswordless communication
+# check communication
+ansible all -m ping -u root
