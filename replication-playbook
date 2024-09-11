@@ -1,3 +1,4 @@
+---
 - hosts: primary
   become: true
 
@@ -22,15 +23,6 @@
       service: 
         name: mongod 
         state: started
-
-    - name: Initiate replica set on primary
-      shell: mongo --eval 'rs.initiate()'
-      register: rs_initiate_output
-      ignore_errors: yes
-
-    - name: Show rs.initiate output
-      debug:
-        var: rs_initiate_output.stdout
 
 - hosts: secondaries
   become: true
@@ -59,8 +51,17 @@
 
 - hosts: primary
   become: true
+  
+  tasks:  
+    - name: Initiate replica set on primary
+      shell: mongo --eval 'rs.initiate()'
+      register: rs_initiate_output
+      ignore_errors: yes
 
-  tasks:
+    - name: Show rs.initiate output
+      debug:
+        var: rs_initiate_output.stdout
+
     - name: Add secondary 1 to replica set
       shell: mongo --eval 'rs.add("secondary-mongodb1-ip")'
       register: add_secondary_1
