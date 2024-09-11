@@ -1,0 +1,88 @@
+- hosts: primary
+  become: true
+
+  tasks:
+    - name: Stop mongod service on primary
+      service: 
+        name: mongod 
+        state: stopped
+
+    - name: Configure mongod.conf for primary (bindIp and replication)
+      blockinfile:
+        path: /etc/mongod.conf
+        marker: ""
+        block: |
+          net:
+            bindIp: 0.0.0.0
+            port: 27017
+          replication:
+            replSetName: "rs0"
+
+    - name: Start mongod service on primary
+      service: 
+        name: mongod 
+        state: started
+
+    - name: Initiate replica set on primary
+      shell: mongo --eval 'rs.initiate()'
+      register: rs_initiate_output
+      ignore_errors: yes
+
+    - name: Show rs.initiate output
+      debug:
+        var: rs_initiate_output.stdout
+
+- hosts: secondaries
+  become: true
+
+  tasks:
+    - name: Stop mongod service on secondary nodes
+      service: 
+        name: mongod 
+        state: stopped
+
+    - name: Configure mongod.conf for secondaries (bindIp and replication)
+      blockinfile:
+        path: /etc/mongod.conf
+        marker: ""
+        block: |
+          net:
+            bindIp: 0.0.0.0
+            port: 27017
+          replication:
+            replSetName: "rs0"
+
+    - name: Start mongod service on secondary nodes
+      service: 
+        name: mongod 
+        state: started
+
+- hosts: primary
+  become: true
+
+  tasks:
+    - name: Add secondary 1 to replica set
+      shell: mongo --eval 'rs.add("secondary-mongodb1-ip")'
+      register: add_secondary_1
+      ignore_errors: yes
+
+    - name: Add secondary 2 to replica set
+      shell: mongo --eval 'rs.add("secondary-mongodb2-ip")'
+      register: add_secondary_2
+      ignore_errors: yes
+
+    - name: Show result of adding secondary 1
+      debug:
+        var: add_secondary_1.stdout
+
+    - name: Show result of adding secondary 2
+      debug:
+        var: add_secondary_2.stdout
+
+    - name: Check replica set status
+      shell: mongo --eval 'rs.status()'
+      register: rs_status_output
+
+    - name: Show replica set status
+      debug:
+        var: rs_status_output.stdout
