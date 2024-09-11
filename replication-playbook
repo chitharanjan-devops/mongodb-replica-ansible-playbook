@@ -1,58 +1,12 @@
 ---
 - hosts: primary
   become: true
-
   tasks:
-    - name: Stop mongod service on primary
-      service: 
-        name: mongod 
-        state: stopped
-
-    - name: Configure mongod.conf for primary (bindIp and replication)
-      blockinfile:
-        path: /etc/mongod.conf
-        marker: ""
-        block: |
-          net:
-            bindIp: 0.0.0.0
-            port: 27017
-          replication:
-            replSetName: "rs0"
-
-    - name: Start mongod service on primary
-      service: 
-        name: mongod 
+    - name: Ensure MongoDB is started on primary node
+      service:
+        name: mongod
         state: started
 
-- hosts: secondaries
-  become: true
-
-  tasks:
-    - name: Stop mongod service on secondary nodes
-      service: 
-        name: mongod 
-        state: stopped
-
-    - name: Configure mongod.conf for secondaries (bindIp and replication)
-      blockinfile:
-        path: /etc/mongod.conf
-        marker: ""
-        block: |
-          net:
-            bindIp: 0.0.0.0
-            port: 27017
-          replication:
-            replSetName: "rs0"
-
-    - name: Start mongod service on secondary nodes
-      service: 
-        name: mongod 
-        state: started
-
-- hosts: primary
-  become: true
-  
-  tasks:  
     - name: Initiate replica set on primary
       shell: mongo --eval 'rs.initiate()'
       register: rs_initiate_output
@@ -63,12 +17,12 @@
         var: rs_initiate_output.stdout
 
     - name: Add secondary 1 to replica set
-      shell: mongo --eval 'rs.add("secondary-mongodb1-ip")'
+      shell: mongo --eval 'rs.add("172.31.7.108")'
       register: add_secondary_1
       ignore_errors: yes
 
     - name: Add secondary 2 to replica set
-      shell: mongo --eval 'rs.add("secondary-mongodb2-ip")'
+      shell: mongo --eval 'rs.add("172.31.13.183")'
       register: add_secondary_2
       ignore_errors: yes
 
@@ -87,3 +41,15 @@
     - name: Show replica set status
       debug:
         var: rs_status_output.stdout
+
+- hosts: secondaries
+  become: true
+  tasks:
+    - name: Enable slaveOk on secondary nodes
+      shell: mongo --eval 'rs.slaveOk()'
+      register: slave_ok_output
+      ignore_errors: yes
+
+    - name: Show output of slaveOk command
+      debug:
+        var: slave_ok_output.stdout
