@@ -1,1 +1,7 @@
+# path /etc/ansible/hosts
+[primary]
+primary-mongodb ansible_host=
+[secondaries]
+secondary-mongodb1 ansible_host=
+secondary-mongodb2 ansible_host=
 
