@@ -1,16 +1,32 @@
-# configured mongodb.conf manually
 ---
-- hosts: primary
+- name: Restart MongoDB and configure replica set
+  hosts: primary-mongodb
   become: true
   tasks:
-    - name: Ensure MongoDB is started on primary node
+    - name: Restart MongoDB service
       service:
         name: mongod
-        state: started
+        state: restarted
 
-    - name: Initiate replica set on primary
+    - name: Wait for MongoDB to start
+      wait_for:
+        port: 27017
+        delay: 10
+        timeout: 30
+
+    - name: Check if replica set is already initiated
+      shell: mongo --eval 'rs.status().ok'
+      register: replica_status_check
+      ignore_errors: yes
+
+    - name: Show replica set status check output
+      debug:
+        var: replica_status_check.stdout
+
+    - name: Initiate replica set on primary (if not already initiated)
       shell: mongo --eval 'rs.initiate()'
       register: rs_initiate_output
+      when: replica_status_check.stdout != "1"
       ignore_errors: yes
 
     - name: Show rs.initiate output
@@ -18,18 +34,18 @@
         var: rs_initiate_output.stdout
 
     - name: Add secondary 1 to replica set
-      shell: mongo --eval 'rs.add("172.31.7.108")'
+      shell: mongo --eval 'rs.add("10.0.0.5")'
       register: add_secondary_1
-      ignore_errors: yes
-
-    - name: Add secondary 2 to replica set
-      shell: mongo --eval 'rs.add("172.31.13.183")'
-      register: add_secondary_2
       ignore_errors: yes
 
     - name: Show result of adding secondary 1
       debug:
         var: add_secondary_1.stdout
+
+    - name: Add secondary 2 to replica set
+      shell: mongo --eval 'rs.add("10.0.0.6")'
+      register: add_secondary_2
+      ignore_errors: yes
 
     - name: Show result of adding secondary 2
       debug:
@@ -43,7 +59,7 @@
       debug:
         var: rs_status_output.stdout
 
-- hosts: secondaries
+- hosts: secondary-mongodb1,secondary-mongodb2
   become: true
   tasks:
     - name: Enable slaveOk on secondary nodes
